@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業水準測量紀錄系統 (智慧命名版)</title>
+    <title>專業水準測量紀錄系統 (智慧命名穩定版)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root { --primary-dark: #1a2a3a; }
@@ -43,7 +43,7 @@
             .table-responsive { overflow: visible; }
         }
 
-        /* 底部統計列 (手機專用，電腦隱藏可選) */
+        /* 底部統計列 */
         .summary-bar {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: #fff; border-top: 2px solid var(--primary-dark);
@@ -111,7 +111,7 @@
 </div>
 
 <script>
-    // --- 智慧命名核心邏輯 ---
+    // --- 新增智慧命名邏輯 ---
     function getNextSmartName(type) {
         const rows = document.querySelectorAll('#tableBody tr');
         if (rows.length === 0) return "A1";
@@ -119,7 +119,7 @@
         const lastRow = rows[rows.length - 1];
         const lastName = lastRow.querySelector('.pt-name').value;
         
-        // 正則表達式：分離字串與結尾數字
+        // 正規表達式：將結尾的數字分離出來
         const match = lastName.match(/^(.*?)(\d+)$/);
         
         if (match) {
@@ -127,4 +127,79 @@
             const number = parseInt(match[2]);
             return prefix + (number + 1);
         } else {
-            // 如果上一個點沒有數字，
+            // 如果上一個點號沒有數字，則使用原始預設
+            return type === 'TP' ? 'TP' : 'IFS';
+        }
+    }
+
+    function saveAllData() {
+        const rows = [];
+        document.querySelectorAll('#tableBody tr').forEach(row => {
+            rows.push({
+                type: row.dataset.type,
+                name: row.querySelector('.pt-name').value,
+                bs: row.querySelector('.bs').value,
+                ifs: row.querySelector('.ifs').value,
+                fs: row.querySelector('.fs').value,
+                note: row.querySelector('.note').value
+            });
+        });
+        localStorage.setItem('surveyAdaptiveBackup', JSON.stringify({
+            surveyType: document.getElementById('surveyType').value,
+            startHeight: document.getElementById('startHeight').value,
+            endHeight: document.getElementById('endHeight').value,
+            rows: rows
+        }));
+    }
+
+    function loadSavedData() {
+        const saved = localStorage.getItem('surveyAdaptiveBackup');
+        if (saved) {
+            const data = JSON.parse(saved);
+            document.getElementById('surveyType').value = data.surveyType;
+            document.getElementById('startHeight').value = data.startHeight;
+            document.getElementById('endHeight').value = data.endHeight;
+            toggleEndHeight();
+            document.getElementById('tableBody').innerHTML = '';
+            data.rows.forEach((r, i) => createRowElement(r.type, i === 0, r));
+            calculate();
+        } else {
+            createRowElement('TP', true);
+        }
+    }
+
+    function createRowElement(type, isFirst, savedRow = null) {
+        const tbody = document.getElementById('tableBody');
+        const row = document.createElement('tr');
+        row.dataset.type = type;
+        
+        // 智慧命名邏輯整合
+        const name = savedRow ? savedRow.name : (isFirst ? 'A1' : getNextSmartName(type));
+        const bs = savedRow ? savedRow.bs : '';
+        const ifs = savedRow ? savedRow.ifs : '';
+        const fs = savedRow ? savedRow.fs : (isFirst ? '' : '');
+        const note = savedRow ? savedRow.note : '';
+
+        row.innerHTML = `
+            <td><input type="text" class="form-control pt-name" value="${name}" oninput="saveAllData()"></td>
+            <td><input type="number" class="form-control bs" value="${bs}" ${type==='IFS'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
+            <td><input type="number" class="form-control ifs" value="${ifs}" ${type==='TP'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
+            <td><input type="number" class="form-control fs" value="${fs}" ${isFirst || type==='IFS'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
+            <td class="hi-col"></td>
+            <td class="elev-col"></td>
+            <td>
+                <div class="d-flex gap-1">
+                    <input type="text" class="form-control note" value="${note}" placeholder="註" oninput="saveAllData()">
+                    ${isFirst ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteRow(this)">✕</button>`}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(row);
+    }
+
+    function addRow(type) { createRowElement(type, false); calculate(); saveAllData(); }
+    
+    function deleteRow(btn) { if(confirm("刪除？")) { btn.closest('tr').remove(); calculate(); saveAllData(); } }
+    
+    // 確保這裡的 ID 跟 HTML 完全對應
+    function toggleEndHeight()
