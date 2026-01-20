@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業水準測量電子紀錄表</title>
+    <title>專業水準測量紀錄表 - 技師進階版</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body { background-color: #f0f2f5; padding: 15px; font-family: "PingFang TC", "Microsoft JhengHei", sans-serif; }
-        .container-main { max-width: 1200px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
+        .container-main { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
         .table thead { background-color: #1a2a3a; color: white; vertical-align: middle; }
         .summary-panel { background-color: #f8f9fa; border: 1px solid #dee2e6; border-left: 5px solid #0d6efd; padding: 15px; border-radius: 4px; }
         .highlight-elev { font-weight: bold; color: #d63384; }
         .type-selector { background-color: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .btn-delete { color: #dc3545; cursor: pointer; border: none; background: none; }
+        .btn-delete:hover { color: #a71d2a; }
     </style>
 </head>
 <body>
@@ -20,16 +22,20 @@
     <h2 class="text-center mb-4">專業水準測量紀錄表</h2>
     
     <div class="type-selector row g-3">
-        <div class="col-md-4">
+        <div class="col-md-3">
             <label class="form-label fw-bold">測量類型</label>
-            <select id="surveyType" class="form-select form-select-lg" onchange="calculate()">
-                <option value="閉合水準測量">閉合水準測量 (迴路至起點)</option>
-                <option value="附合水準測量">附合水準測量 (連接至另一已知點)</option>
+            <select id="surveyType" class="form-select" onchange="toggleEndHeight()">
+                <option value="閉合水準測量">閉合水準測量</option>
+                <option value="附合水準測量">附合水準測量</option>
             </select>
         </div>
-        <div class="col-md-4">
-            <label class="form-label fw-bold">起始已知高程 (H_start)</label>
-            <input type="number" id="startHeight" class="form-control form-control-lg" value="0.000" step="0.001" oninput="calculate()">
+        <div class="col-md-3">
+            <label class="form-label fw-bold">起點已知高程 (H1)</label>
+            <input type="number" id="startHeight" class="form-control" value="0.000" step="0.001" oninput="calculate()">
+        </div>
+        <div id="endHeightDiv" class="col-md-3" style="display:none;">
+            <label class="form-label fw-bold text-danger">終點已知高程 (H2)</label>
+            <input type="number" id="endHeight" class="form-control" value="0.000" step="0.001" oninput="calculate()">
         </div>
     </div>
 
@@ -37,31 +43,33 @@
         <button class="btn btn-primary px-4" onclick="addRow('TP')">➕ 新增轉點 (TP)</button>
         <button class="btn btn-outline-secondary px-4" onclick="addRow('IFS')">👁️ 新增間視 (IFS)</button>
         <button class="btn btn-success px-4" onclick="exportToCSV()">💾 匯出 Excel (CSV)</button>
-        <button class="btn btn-link text-danger ms-auto" onclick="resetTable()">重置所有數據</button>
+        <button class="btn btn-link text-danger ms-auto" onclick="resetTable()">全表重置</button>
     </div>
 
     <div class="table-responsive">
         <table class="table table-hover table-bordered text-center align-middle" id="surveyTable">
             <thead>
                 <tr>
+                    <th style="width: 50px;">刪除</th>
                     <th style="min-width: 100px;">測點</th>
                     <th style="min-width: 100px;">後視 (BS)</th>
                     <th style="min-width: 100px;">間視 (IFS)</th>
                     <th style="min-width: 100px;">前視 (FS)</th>
                     <th style="min-width: 110px; background-color: #2c3e50;">儀器高 (HI)</th>
                     <th style="min-width: 110px;">高程 (Elev)</th>
-                    <th style="min-width: 150px;">備註 (Note)</th>
+                    <th style="min-width: 150px;">備註</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
                 <tr data-type="TP">
+                    <td>-</td>
                     <td><input type="text" class="form-control pt-name" value="BM1"></td>
                     <td><input type="number" class="form-control bs" step="0.001" oninput="calculate()"></td>
                     <td><input type="number" class="form-control ifs" disabled placeholder="-"></td>
                     <td><input type="number" class="form-control fs" value="-" disabled></td>
                     <td class="hi bg-light fw-bold"></td>
                     <td class="elev highlight-elev">0.000</td>
-                    <td><input type="text" class="form-control note" placeholder="起點說明"></td>
+                    <td><input type="text" class="form-control note" value="起點"></td>
                 </tr>
             </tbody>
         </table>
@@ -69,22 +77,29 @@
 
     <div class="summary-panel mt-4">
         <div class="row text-center">
-            <div class="col-md-3 mb-2"><strong>Σ BS (總後視):</strong> <br><span id="sumBS" class="fs-5">0.000</span></div>
-            <div class="col-md-3 mb-2"><strong>Σ FS (總前視):</strong> <br><span id="sumFS" class="fs-5 text-danger">0.000</span></div>
-            <div class="col-md-3 mb-2"><strong>ΣBS - ΣFS (高差):</strong> <br><span id="diffH" class="fs-5 text-primary">0.000</span></div>
-            <div class="col-md-3 mb-2"><strong>檢核結果:</strong> <br><span id="checkResult" class="small text-muted">等待數據輸入...</span></div>
+            <div class="col-md-3"><strong>Σ BS:</strong> <br><span id="sumBS">0.000</span></div>
+            <div class="col-md-3"><strong>Σ FS:</strong> <br><span id="sumFS" class="text-danger">0.000</span></div>
+            <div class="col-md-3"><strong>實測高差 ($\Delta H$):</strong> <br><span id="diffH" class="text-primary">0.000</span></div>
+            <div class="col-md-3"><strong>閉合差 ($W_h$):</strong> <br><span id="closureError" class="fw-bold text-success">0.000</span></div>
         </div>
     </div>
 </div>
 
 <script>
+    function toggleEndHeight() {
+        const type = document.getElementById('surveyType').value;
+        document.getElementById('endHeightDiv').style.display = (type === '附合水準測量') ? 'block' : 'none';
+        calculate();
+    }
+
     function addRow(type) {
         const tbody = document.getElementById('tableBody');
         const row = document.createElement('tr');
         row.dataset.type = type;
         
+        let content = `<td><button class="btn-delete" onclick="deleteRow(this)">🗑️</button></td>`;
         if (type === 'TP') {
-            row.innerHTML = `
+            content += `
                 <td><input type="text" class="form-control pt-name" placeholder="TP"></td>
                 <td><input type="number" class="form-control bs" step="0.001" oninput="calculate()"></td>
                 <td><input type="number" class="form-control ifs" disabled placeholder="-"></td>
@@ -93,7 +108,7 @@
                 <td class="elev highlight-elev"></td>
                 <td><input type="text" class="form-control note"></td>`;
         } else {
-            row.innerHTML = `
+            content += `
                 <td><input type="text" class="form-control pt-name" placeholder="IFS"></td>
                 <td><input type="number" class="form-control bs" disabled placeholder="-"></td>
                 <td><input type="number" class="form-control ifs" step="0.001" oninput="calculate()"></td>
@@ -102,18 +117,24 @@
                 <td class="elev"></td>
                 <td><input type="text" class="form-control note"></td>`;
         }
+        row.innerHTML = content;
         tbody.appendChild(row);
+    }
+
+    function deleteRow(btn) {
+        if(confirm("確定要刪除此測點嗎？")) {
+            btn.closest('tr').remove();
+            calculate();
+        }
     }
 
     function calculate() {
         const startH = parseFloat(document.getElementById('startHeight').value) || 0;
-        const rows = document.querySelectorAll('#tableBody tr');
+        const endH = parseFloat(document.getElementById('endHeight').value) || 0;
         const surveyType = document.getElementById('surveyType').value;
+        const rows = document.querySelectorAll('#tableBody tr');
         
-        let lastHI = 0;
-        let totalBS = 0;
-        let totalFS = 0;
-        let lastElev = startH;
+        let lastHI = 0, totalBS = 0, totalFS = 0, lastElev = startH;
 
         rows.forEach((row, index) => {
             const type = row.dataset.type;
@@ -125,55 +146,47 @@
 
             if (index === 0) {
                 elevCell.innerText = startH.toFixed(3);
-                if (!isNaN(bs)) {
-                    lastHI = startH + bs;
-                    hiCell.innerText = lastHI.toFixed(3);
-                    totalBS += bs;
-                } else { hiCell.innerText = ""; }
+                if (!isNaN(bs)) { lastHI = startH + bs; hiCell.innerText = lastHI.toFixed(3); totalBS += bs; }
+                else { hiCell.innerText = ""; }
             } else {
                 if (type === 'TP') {
                     if (!isNaN(fs) && lastHI !== 0) {
                         lastElev = lastHI - fs;
                         elevCell.innerText = lastElev.toFixed(3);
                         totalFS += fs;
-                        if (!isNaN(bs)) {
-                            lastHI = lastElev + bs;
-                            hiCell.innerText = lastHI.toFixed(3);
-                            totalBS += bs;
-                        } else { hiCell.innerText = ""; lastHI = 0; }
+                        if (!isNaN(bs)) { lastHI = lastElev + bs; hiCell.innerText = lastHI.toFixed(3); totalBS += bs; }
+                        else { hiCell.innerText = ""; lastHI = 0; }
                     } else { elevCell.innerText = ""; }
                 } else if (type === 'IFS') {
-                    if (!isNaN(ifs) && lastHI !== 0) {
-                        elevCell.innerText = (lastHI - ifs).toFixed(3);
-                    } else { elevCell.innerText = ""; }
+                    if (!isNaN(ifs) && lastHI !== 0) elevCell.innerText = (lastHI - ifs).toFixed(3);
+                    else elevCell.innerText = "";
                 }
             }
         });
 
-        // 更新統計
+        // 閉合差邏輯
         const diffSum = totalBS - totalFS;
-        const diffElev = lastElev - startH;
         document.getElementById('sumBS').innerText = totalBS.toFixed(3);
         document.getElementById('sumFS').innerText = totalFS.toFixed(3);
         document.getElementById('diffH').innerText = diffSum.toFixed(3);
 
-        // 顯示檢核訊息
-        let checkMsg = `(ΣBS - ΣFS) = ${diffSum.toFixed(3)}<br>`;
+        let closureErr = 0;
         if (surveyType === "閉合水準測量") {
-            checkMsg += `閉合差: ${diffSum.toFixed(3)} (應接近於0)`;
+            closureErr = diffSum; // 應回到起始點，理想為0
         } else {
-            checkMsg += `實測高差: ${diffSum.toFixed(3)}`;
+            closureErr = diffSum - (endH - startH); // Wh = ΣBS - ΣFS - (H_end - H_start)
         }
-        document.getElementById('checkResult').innerHTML = checkMsg;
+        document.getElementById('closureError').innerText = closureErr.toFixed(3);
     }
 
     function exportToCSV() {
         const type = document.getElementById('surveyType').value;
         let csv = '\uFEFF測量類型,' + type + '\n';
+        csv += '起點已知高程,' + document.getElementById('startHeight').value + (type==='附合水準測量' ? ',終點已知高程,' + document.getElementById('endHeight').value : '') + '\n';
         csv += '點位類型,測點,後視(BS),間視(IFS),前視(FS),儀器高(HI),高程(Elev),備註\n';
         
         document.querySelectorAll('#tableBody tr').forEach(row => {
-            const rowType = row.dataset.type === 'TP' ? '轉點' : '間視';
+            const rType = row.dataset.type;
             const name = row.querySelector('.pt-name').value;
             const bs = row.querySelector('.bs').value || '';
             const ifs = row.querySelector('.ifs').value || '';
@@ -181,19 +194,19 @@
             const hi = row.querySelector('.hi').innerText;
             const elev = row.querySelector('.elev').innerText;
             const note = row.querySelector('.note').value;
-            csv += `${rowType},${name},${bs},${ifs},${fs},${hi},${elev},${note}\n`;
+            csv += `${rType},${name},${bs},${ifs},${fs},${hi},${elev},${note}\n`;
         });
-        
+
+        csv += `\n檢核統計,ΣBS,${document.getElementById('sumBS').innerText},ΣFS,${document.getElementById('sumFS').innerText},實測高差,${document.getElementById('diffH').innerText},閉合差,${document.getElementById('closureError').innerText}\n`;
+
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `${type}_紀錄_${new Date().getTime()}.csv`;
+        link.download = `${type}_${new Date().getTime()}.csv`;
         link.click();
     }
 
-    function resetTable() {
-        if(confirm("確定重置所有數據嗎？")) location.reload();
-    }
+    function resetTable() { if(confirm("確定全表重置？")) location.reload(); }
 </script>
 </body>
 </html>
