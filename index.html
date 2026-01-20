@@ -2,87 +2,122 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>專業水準測量紀錄表 - 具備防誤觸自動儲存</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>水準紀錄 - 行動版</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; padding: 10px; font-family: "Microsoft JhengHei", sans-serif; }
-        .container-main { max-width: 1400px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
-        .table thead { background-color: #1a2a3a; color: white; vertical-align: middle; }
-        .summary-panel { background-color: #f8f9fa; border: 1px solid #dee2e6; border-left: 5px solid #0d6efd; padding: 15px; border-radius: 4px; }
-        .highlight-elev { font-weight: bold; color: #d63384; }
-        .type-selector { background-color: #e9ecef; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .btn-delete { color: #dc3545; cursor: pointer; border: none; background: none; font-size: 1.2rem; }
-        /* 手機版優化：縮小輸入框字體防止跑版 */
-        .form-control { font-size: 0.9rem; padding: 5px; }
+        :root { --primary-dark: #1a2a3a; }
+        body { background-color: #f0f2f5; font-family: sans-serif; padding-bottom: 50px; }
+        .header-section { background: var(--primary-dark); color: white; padding: 15px; border-radius: 0 0 15px 15px; margin-bottom: 10px; }
+        
+        /* 關鍵：手機直式滾動優化 */
+        .table-responsive {
+            background: white;
+            border-radius: 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        table { min-width: 600px; margin-bottom: 0 !important; }
+        
+        /* 凍結首欄 (測點名稱) */
+        th:first-child, td:first-child {
+            position: sticky;
+            left: 0;
+            background-color: white !important;
+            z-index: 10;
+            border-right: 2px solid #dee2e6;
+            min-width: 80px;
+        }
+        th:first-child { background-color: var(--primary-dark) !important; color: white; }
+
+        .form-control {
+            padding: 8px 5px;
+            font-size: 16px; /* 防止 iOS 縮放 */
+            text-align: center;
+            border: 1px solid #ced4da;
+        }
+        
+        .btn-sm { padding: 8px 12px; font-weight: bold; }
+        .summary-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 2px solid var(--primary-dark);
+            padding: 5px 10px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        .hi-col { background-color: #f8f9fa !important; color: #0d6efd; font-weight: bold; }
+        .elev-col { background-color: #fff0f5 !important; color: #d63384; font-weight: bold; }
     </style>
 </head>
 <body onload="loadSavedData()">
 
-<div class="container-main">
-    <h3 class="text-center mb-4">專業水準測量紀錄表 <span class="badge bg-success" style="font-size: 0.8rem;">自動儲存已開啟</span></h3>
-    
-    <div class="type-selector row g-3">
-        <div class="col-6 col-md-3">
-            <label class="form-label fw-bold">測量類型</label>
-            <select id="surveyType" class="form-select" onchange="toggleEndHeight(); saveAllData();">
-                <option value="閉合水準測量">閉合水準測量</option>
-                <option value="附合水準測量">附合水準測量</option>
+<div class="header-section text-center shadow">
+    <h5 class="mb-2">水準測量紀錄 (直式優化)</h5>
+    <div class="row g-2">
+        <div class="col-6">
+            <select id="surveyType" class="form-select form-select-sm" onchange="toggleEndHeight(); saveAllData();">
+                <option value="閉合水準測量">閉合</option>
+                <option value="附合水準測量">附合</option>
             </select>
         </div>
-        <div class="col-6 col-md-3">
-            <label class="form-label fw-bold">起點高程 (H1)</label>
-            <input type="number" id="startHeight" class="form-control" value="0.000" step="0.001" oninput="calculate(); saveAllData();">
+        <div class="col-6">
+            <input type="number" id="startHeight" class="form-control form-control-sm" placeholder="起點H" step="0.001" oninput="calculate(); saveAllData();">
         </div>
-        <div id="endHeightDiv" class="col-6 col-md-3" style="display:none;">
-            <label class="form-label fw-bold text-danger">終點已知 (H2)</label>
-            <input type="number" id="endHeight" class="form-control" value="0.000" step="0.001" oninput="calculate(); saveAllData();">
+        <div id="endHeightDiv" class="col-12 mt-2" style="display:none;">
+            <input type="number" id="endHeight" class="form-control form-control-sm border-danger" placeholder="終點已知高程" step="0.001" oninput="calculate(); saveAllData();">
+        </div>
+    </div>
+</div>
+
+<div class="px-2">
+    <div class="d-flex justify-content-between mb-2">
+        <div>
+            <button class="btn btn-primary btn-sm" onclick="addRow('TP')">＋TP</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="addRow('IFS')">＋IFS</button>
+            <button class="btn btn-warning btn-sm" onclick="adjustErrors()">⚖️平差</button>
+        </div>
+        <div>
+            <button class="btn btn-success btn-sm" onclick="exportToCSV()">💾導出</button>
+            <button class="btn btn-link btn-sm text-danger" onclick="resetTable()">重置</button>
         </div>
     </div>
 
-    <div class="d-flex flex-wrap gap-2 mb-3">
-        <button class="btn btn-primary btn-sm px-3" onclick="addRow('TP')">➕ 轉點 (TP)</button>
-        <button class="btn btn-outline-secondary btn-sm px-3" onclick="addRow('IFS')">👁️ 間視 (IFS)</button>
-        <button class="btn btn-warning btn-sm px-3 fw-bold" onclick="adjustErrors()">⚖️ 平差計算</button>
-        <button class="btn btn-success btn-sm px-3" onclick="exportToCSV()">💾 匯出 Excel</button>
-        <button class="btn btn-link btn-sm text-danger ms-auto" onclick="resetTable()">全表重置</button>
-    </div>
-
-    <div class="table-responsive">
-        <table class="table table-hover table-bordered text-center align-middle" id="surveyTable">
+    <div class="table-responsive shadow-sm">
+        <table class="table table-bordered align-middle text-center" id="surveyTable">
             <thead>
                 <tr>
-                    <th style="width: 40px;">刪</th>
-                    <th style="min-width: 80px;">測點</th>
-                    <th style="min-width: 90px;">後視(BS)</th>
-                    <th style="min-width: 90px;">間視(IFS)</th>
-                    <th style="min-width: 90px;">前視(FS)</th>
-                    <th style="min-width: 100px; background-color: #2c3e50;">儀器高(HI)</th>
-                    <th style="min-width: 100px;">高程(Elev)</th>
-                    <th>備註</th>
+                    <th>測點</th>
+                    <th style="width: 85px;">BS</th>
+                    <th style="width: 85px;">IFS</th>
+                    <th style="width: 85px;">FS</th>
+                    <th style="width: 95px;">HI</th>
+                    <th style="width: 95px;">Elev</th>
+                    <th style="width: 120px;">備註/刪除</th>
                 </tr>
             </thead>
             <tbody id="tableBody">
                 </tbody>
         </table>
     </div>
+</div>
 
-    <div class="summary-panel mt-3">
-        <div class="row text-center">
-            <div class="col-3">ΣBS: <span id="sumBS">0.000</span></div>
-            <div class="col-3">ΣFS: <span id="sumFS" class="text-danger">0.000</span></div>
-            <div class="col-3">高差: <span id="diffH" class="text-primary">0.000</span></div>
-            <div class="col-3">誤差: <span id="closureError" class="fw-bold text-success">0.000</span></div>
-        </div>
-    </div>
+<div class="summary-bar shadow d-flex justify-content-around align-items-center">
+    <div>ΣBS: <span id="sumBS">0.00</span></div>
+    <div>ΣFS: <span id="sumFS" class="text-danger">0.00</span></div>
+    <div>Wh: <span id="closureError" class="fw-bold">0.00</span></div>
 </div>
 
 <script>
-    // --- 儲存與讀取邏輯 ---
+    // --- 儲存、計算與平差邏輯 (保持原核心，針對 DOM ID 微調) ---
     function saveAllData() {
-        const rowsData = [];
+        const rows = [];
         document.querySelectorAll('#tableBody tr').forEach(row => {
-            rowsData.push({
+            rows.push({
                 type: row.dataset.type,
                 name: row.querySelector('.pt-name').value,
                 bs: row.querySelector('.bs').value,
@@ -91,76 +126,59 @@
                 note: row.querySelector('.note').value
             });
         });
-
-        const appState = {
+        localStorage.setItem('surveyVerticalBackup', JSON.stringify({
             surveyType: document.getElementById('surveyType').value,
             startHeight: document.getElementById('startHeight').value,
             endHeight: document.getElementById('endHeight').value,
-            rows: rowsData
-        };
-        localStorage.setItem('surveyBackup', JSON.stringify(appState));
+            rows: rows
+        }));
     }
 
     function loadSavedData() {
-        const saved = localStorage.getItem('surveyBackup');
+        const saved = localStorage.getItem('surveyVerticalBackup');
         if (saved) {
             const data = JSON.parse(saved);
             document.getElementById('surveyType').value = data.surveyType;
             document.getElementById('startHeight').value = data.startHeight;
             document.getElementById('endHeight').value = data.endHeight;
             toggleEndHeight();
-
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
-            data.rows.forEach((row, index) => {
-                createRowElement(row.type, index === 0, row);
-            });
+            document.getElementById('tableBody').innerHTML = '';
+            data.rows.forEach((r, i) => createRowElement(r.type, i === 0, r));
             calculate();
         } else {
-            // 若無暫存，建立首行
             createRowElement('TP', true);
         }
     }
 
-    // --- 表格操作 ---
     function createRowElement(type, isFirst, savedRow = null) {
         const tbody = document.getElementById('tableBody');
         const row = document.createElement('tr');
         row.dataset.type = type;
         
-        let delBtn = isFirst ? '-' : `<button class="btn-delete" onclick="deleteRow(this)">🗑️</button>`;
         const name = savedRow ? savedRow.name : (isFirst ? 'BM1' : (type==='TP'?'TP':'IFS'));
         const bs = savedRow ? savedRow.bs : '';
         const ifs = savedRow ? savedRow.ifs : '';
-        const fs = savedRow ? savedRow.fs : (isFirst ? '-' : '');
-        const note = savedRow ? savedRow.note : (isFirst ? '起點' : '');
+        const fs = savedRow ? savedRow.fs : (isFirst ? '' : '');
+        const note = savedRow ? savedRow.note : '';
 
         row.innerHTML = `
-            <td>${delBtn}</td>
             <td><input type="text" class="form-control pt-name" value="${name}" oninput="saveAllData()"></td>
             <td><input type="number" class="form-control bs" value="${bs}" ${type==='IFS'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
             <td><input type="number" class="form-control ifs" value="${ifs}" ${type==='TP'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
             <td><input type="number" class="form-control fs" value="${fs}" ${isFirst || type==='IFS'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
-            <td class="hi ${type==='IFS'?'text-muted':'bg-light fw-bold'}"></td>
-            <td class="elev highlight-elev"></td>
-            <td><input type="text" class="form-control note" value="${note}" oninput="saveAllData()"></td>
+            <td class="hi-col"></td>
+            <td class="elev-col"></td>
+            <td class="d-flex align-items-center gap-1">
+                <input type="text" class="form-control note" value="${note}" placeholder="註" oninput="saveAllData()">
+                ${isFirst ? '' : `<button class="btn btn-sm text-danger" onclick="deleteRow(this)">✕</button>`}
+            </td>
         `;
         tbody.appendChild(row);
     }
 
-    function addRow(type) {
-        createRowElement(type, false);
-        saveAllData();
-    }
-
-    function deleteRow(btn) {
-        if(confirm("確定刪除此列？")) { btn.closest('tr').remove(); calculate(); saveAllData(); }
-    }
-
-    // --- 計算邏輯 ---
-    function toggleEndHeight() {
-        document.getElementById('endHeightDiv').style.display = (document.getElementById('surveyType').value === '附合水準測量') ? 'block' : 'none';
-    }
+    function addRow(type) { createRowElement(type, false); saveAllData(); }
+    function deleteRow(btn) { if(confirm("刪除？")) { btn.closest('tr').remove(); calculate(); saveAllData(); } }
+    function toggleEndHeight() { document.getElementById('endHeightDiv').style.display = (document.getElementById('surveyType').value === '附合水準測量') ? 'block' : 'none'; }
 
     function calculate() {
         const startH = parseFloat(document.getElementById('startHeight').value) || 0;
@@ -174,7 +192,7 @@
             const bs = parseFloat(row.querySelector('.bs').value);
             const fs = parseFloat(row.querySelector('.fs').value);
             const ifs = parseFloat(row.querySelector('.ifs').value);
-            const hiCell = row.querySelector('.hi'), elevCell = row.querySelector('.elev');
+            const hiCell = row.querySelector('.hi-col'), elevCell = row.querySelector('.elev-col');
 
             if (index === 0) {
                 elevCell.innerText = startH.toFixed(3);
@@ -191,9 +209,8 @@
             }
         });
 
-        document.getElementById('sumBS').innerText = totalBS.toFixed(3);
-        document.getElementById('sumFS').innerText = totalFS.toFixed(3);
-        document.getElementById('diffH').innerText = (totalBS - totalFS).toFixed(3);
+        document.getElementById('sumBS').innerText = totalBS.toFixed(2);
+        document.getElementById('sumFS').innerText = totalFS.toFixed(2);
         const wh = (type === "閉合水準測量") ? (totalBS - totalFS) : (totalBS - totalFS) - (endH - startH);
         document.getElementById('closureError').innerText = wh.toFixed(3);
     }
@@ -201,37 +218,30 @@
     function adjustErrors() {
         const wh = parseFloat(document.getElementById('closureError').innerText);
         const bsInputs = Array.from(document.querySelectorAll('.bs:not([disabled])')).filter(i => i.value !== "");
-        if (bsInputs.length === 0 || Math.abs(wh) < 0.0001) return alert("無誤差或數據不足");
-
-        if (confirm(`閉合差 ${wh.toFixed(3)}m，確定平均分配至後視點？`)) {
+        if (bsInputs.length === 0 || Math.abs(wh) < 0.0001) return alert("無誤差");
+        if (confirm(`誤差 ${wh.toFixed(3)}m，確定平差？`)) {
             const corr = (-wh) / bsInputs.length;
             bsInputs.forEach(input => {
                 input.value = (parseFloat(input.value) + corr).toFixed(4);
-                input.closest('tr').querySelector('.note').value = `[平差] 改正:${corr.toFixed(4)}`;
+                input.closest('tr').querySelector('.note').value = `[平差]${corr.toFixed(4)}`;
             });
             calculate(); saveAllData();
         }
     }
 
     function exportToCSV() {
-        let csv = '\uFEFF測量紀錄\n測點,後視,間視,前視,儀器高,高程,備註\n';
+        let csv = '\uFEFF測點,BS,IFS,FS,HI,Elev,Note\n';
         document.querySelectorAll('#tableBody tr').forEach(row => {
-            const cells = row.querySelectorAll('input, td');
-            csv += `${row.querySelector('.pt-name').value},${row.querySelector('.bs').value},${row.querySelector('.ifs').value},${row.querySelector('.fs').value},${row.querySelector('.hi').innerText},${row.querySelector('.elev').innerText},${row.querySelector('.note').value}\n`;
+            csv += `${row.querySelector('.pt-name').value},${row.querySelector('.bs').value},${row.querySelector('.ifs').value},${row.querySelector('.fs').value},${row.querySelector('.hi-col').innerText},${row.querySelector('.elev-col').innerText},${row.querySelector('.note').value}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `Survey_${new Date().getTime()}.csv`;
+        link.download = `Survey_Mobile.csv`;
         link.click();
     }
 
-    function resetTable() {
-        if(confirm("警告：這將會清除「所有」已儲存的測量數據，確定嗎？")) {
-            localStorage.removeItem('surveyBackup');
-            location.reload();
-        }
-    }
+    function resetTable() { if(confirm("清空資料？")) { localStorage.removeItem('surveyVerticalBackup'); location.reload(); } }
 </script>
 </body>
 </html>
