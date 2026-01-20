@@ -3,117 +3,115 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>水準紀錄 - 行動版</title>
+    <title>專業水準測量紀錄系統 (自動適應版)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root { --primary-dark: #1a2a3a; }
-        body { background-color: #f0f2f5; font-family: sans-serif; padding-bottom: 50px; }
-        .header-section { background: var(--primary-dark); color: white; padding: 15px; border-radius: 0 0 15px 15px; margin-bottom: 10px; }
+        body { background-color: #f0f2f5; font-family: "Microsoft JhengHei", sans-serif; padding-bottom: 60px; }
         
-        /* 關鍵：手機直式滾動優化 */
-        .table-responsive {
-            background: white;
-            border-radius: 8px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
+        /* 頂部導航欄 */
+        .header-section { background: var(--primary-dark); color: white; padding: 20px; border-radius: 0 0 15px 15px; margin-bottom: 20px; }
         
-        table { min-width: 600px; margin-bottom: 0 !important; }
-        
-        /* 凍結首欄 (測點名稱) */
-        th:first-child, td:first-child {
-            position: sticky;
-            left: 0;
-            background-color: white !important;
-            z-index: 10;
-            border-right: 2px solid #dee2e6;
-            min-width: 80px;
-        }
-        th:first-child { background-color: var(--primary-dark) !important; color: white; }
-
-        .form-control {
-            padding: 8px 5px;
-            font-size: 16px; /* 防止 iOS 縮放 */
-            text-align: center;
-            border: 1px solid #ced4da;
-        }
-        
-        .btn-sm { padding: 8px 12px; font-weight: bold; }
-        .summary-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #fff;
-            border-top: 2px solid var(--primary-dark);
-            padding: 5px 10px;
-            font-size: 12px;
-            z-index: 1000;
-        }
+        /* 表格通用樣式 */
+        .table-container { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); }
         .hi-col { background-color: #f8f9fa !important; color: #0d6efd; font-weight: bold; }
         .elev-col { background-color: #fff0f5 !important; color: #d63384; font-weight: bold; }
+        .form-control { font-size: 16px; text-align: center; }
+
+        /* --- 手機版 (直式) 特定樣式 --- */
+        @media (max-width: 768px) {
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            table { min-width: 700px; }
+            /* 凍結首欄 */
+            th:first-child, td:first-child {
+                position: sticky; left: 0;
+                background-color: white !important; z-index: 10;
+                border-right: 2px solid #dee2e6;
+                min-width: 80px;
+            }
+            th:first-child { background-color: var(--primary-dark) !important; color: white; }
+            .btn-group-custom { display: flex; flex-wrap: wrap; gap: 5px; }
+        }
+
+        /* --- 電腦版特定樣式 --- */
+        @media (min-width: 769px) {
+            .container-main { max-width: 1300px; margin: auto; padding: 20px; }
+            .form-control { padding: 5px; }
+            .table-responsive { overflow: visible; }
+        }
+
+        /* 底部統計列 (手機專用，電腦隱藏可選) */
+        .summary-bar {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #fff; border-top: 2px solid var(--primary-dark);
+            padding: 10px; z-index: 1000; display: flex;
+            justify-content: space-around; font-weight: bold;
+        }
     </style>
 </head>
 <body onload="loadSavedData()">
 
-<div class="header-section text-center shadow">
-    <h5 class="mb-2">水準測量紀錄 (直式優化)</h5>
-    <div class="row g-2">
-        <div class="col-6">
-            <select id="surveyType" class="form-select form-select-sm" onchange="toggleEndHeight(); saveAllData();">
-                <option value="閉合水準測量">閉合</option>
-                <option value="附合水準測量">附合</option>
-            </select>
+<div class="container-main">
+    <div class="header-section shadow">
+        <h3 class="text-center mb-3">專業水準測量紀錄系統</h3>
+        <div class="row g-3">
+            <div class="col-md-3 col-6">
+                <label class="form-label small">測量類型</label>
+                <select id="surveyType" class="form-select" onchange="toggleEndHeight(); saveAllData();">
+                    <option value="閉合水準測量">閉合水準測量</option>
+                    <option value="附合水準測量">附合水準測量</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-6">
+                <label class="form-label small">起點高程 (H1)</label>
+                <input type="number" id="startHeight" class="form-control" value="0.000" step="0.001" oninput="calculate(); saveAllData();">
+            </div>
+            <div id="endHeightDiv" class="col-md-3 col-6" style="display:none;">
+                <label class="form-label small text-warning">終點高程 (H2)</label>
+                <input type="number" id="endHeight" class="form-control" value="0.000" step="0.001" oninput="calculate(); saveAllData();">
+            </div>
         </div>
-        <div class="col-6">
-            <input type="number" id="startHeight" class="form-control form-control-sm" placeholder="起點H" step="0.001" oninput="calculate(); saveAllData();">
-        </div>
-        <div id="endHeightDiv" class="col-12 mt-2" style="display:none;">
-            <input type="number" id="endHeight" class="form-control form-control-sm border-danger" placeholder="終點已知高程" step="0.001" oninput="calculate(); saveAllData();">
+    </div>
+
+    <div class="mb-3 btn-group-custom d-flex gap-2">
+        <button class="btn btn-primary" onclick="addRow('TP')">➕ 轉點 (TP)</button>
+        <button class="btn btn-outline-secondary" onclick="addRow('IFS')">👁️ 間視 (IFS)</button>
+        <button class="btn btn-warning fw-bold" onclick="adjustErrors()">⚖️ 平差計算</button>
+        <button class="btn btn-success" onclick="exportToCSV()">💾 導出 Excel</button>
+        <button class="btn btn-link text-danger ms-auto" onclick="resetTable()">全表重置</button>
+    </div>
+
+    <div class="table-container shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center" id="surveyTable">
+                <thead class="table-dark">
+                    <tr>
+                        <th>測點</th>
+                        <th>後視(BS)</th>
+                        <th>間視(IFS)</th>
+                        <th>前視(FS)</th>
+                        <th>儀器高(HI)</th>
+                        <th>高程(Elev)</th>
+                        <th>備註 / 刪除</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    </tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<div class="px-2">
-    <div class="d-flex justify-content-between mb-2">
-        <div>
-            <button class="btn btn-primary btn-sm" onclick="addRow('TP')">＋TP</button>
-            <button class="btn btn-outline-secondary btn-sm" onclick="addRow('IFS')">＋IFS</button>
-            <button class="btn btn-warning btn-sm" onclick="adjustErrors()">⚖️平差</button>
-        </div>
-        <div>
-            <button class="btn btn-success btn-sm" onclick="exportToCSV()">💾導出</button>
-            <button class="btn btn-link btn-sm text-danger" onclick="resetTable()">重置</button>
-        </div>
-    </div>
-
-    <div class="table-responsive shadow-sm">
-        <table class="table table-bordered align-middle text-center" id="surveyTable">
-            <thead>
-                <tr>
-                    <th>測點</th>
-                    <th style="width: 85px;">BS</th>
-                    <th style="width: 85px;">IFS</th>
-                    <th style="width: 85px;">FS</th>
-                    <th style="width: 95px;">HI</th>
-                    <th style="width: 95px;">Elev</th>
-                    <th style="width: 120px;">備註/刪除</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody">
-                </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="summary-bar shadow d-flex justify-content-around align-items-center">
-    <div>ΣBS: <span id="sumBS">0.00</span></div>
-    <div>ΣFS: <span id="sumFS" class="text-danger">0.00</span></div>
-    <div>Wh: <span id="closureError" class="fw-bold">0.00</span></div>
+<div class="summary-bar shadow">
+    <div class="text-dark">ΣBS: <span id="sumBS">0.000</span></div>
+    <div class="text-danger">ΣFS: <span id="sumFS">0.000</span></div>
+    <div class="text-primary">誤差Wh: <span id="closureError">0.000</span></div>
 </div>
 
 <script>
-    // --- 儲存、計算與平差邏輯 (保持原核心，針對 DOM ID 微調) ---
     function saveAllData() {
         const rows = [];
         document.querySelectorAll('#tableBody tr').forEach(row => {
@@ -126,7 +124,7 @@
                 note: row.querySelector('.note').value
             });
         });
-        localStorage.setItem('surveyVerticalBackup', JSON.stringify({
+        localStorage.setItem('surveyAdaptiveBackup', JSON.stringify({
             surveyType: document.getElementById('surveyType').value,
             startHeight: document.getElementById('startHeight').value,
             endHeight: document.getElementById('endHeight').value,
@@ -135,7 +133,7 @@
     }
 
     function loadSavedData() {
-        const saved = localStorage.getItem('surveyVerticalBackup');
+        const saved = localStorage.getItem('surveyAdaptiveBackup');
         if (saved) {
             const data = JSON.parse(saved);
             document.getElementById('surveyType').value = data.surveyType;
@@ -168,9 +166,11 @@
             <td><input type="number" class="form-control fs" value="${fs}" ${isFirst || type==='IFS'?'disabled':''} step="0.001" oninput="calculate(); saveAllData();"></td>
             <td class="hi-col"></td>
             <td class="elev-col"></td>
-            <td class="d-flex align-items-center gap-1">
-                <input type="text" class="form-control note" value="${note}" placeholder="註" oninput="saveAllData()">
-                ${isFirst ? '' : `<button class="btn btn-sm text-danger" onclick="deleteRow(this)">✕</button>`}
+            <td>
+                <div class="d-flex gap-1">
+                    <input type="text" class="form-control note" value="${note}" placeholder="註" oninput="saveAllData()">
+                    ${isFirst ? '' : `<button class="btn btn-sm btn-outline-danger" onclick="deleteRow(this)">✕</button>`}
+                </div>
             </td>
         `;
         tbody.appendChild(row);
@@ -209,8 +209,8 @@
             }
         });
 
-        document.getElementById('sumBS').innerText = totalBS.toFixed(2);
-        document.getElementById('sumFS').innerText = totalFS.toFixed(2);
+        document.getElementById('sumBS').innerText = totalBS.toFixed(3);
+        document.getElementById('sumFS').innerText = totalFS.toFixed(3);
         const wh = (type === "閉合水準測量") ? (totalBS - totalFS) : (totalBS - totalFS) - (endH - startH);
         document.getElementById('closureError').innerText = wh.toFixed(3);
     }
@@ -237,11 +237,11 @@
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = `Survey_Mobile.csv`;
+        link.download = `Survey_Project.csv`;
         link.click();
     }
 
-    function resetTable() { if(confirm("清空資料？")) { localStorage.removeItem('surveyVerticalBackup'); location.reload(); } }
+    function resetTable() { if(confirm("確定清空所有已儲存的測量資料？")) { localStorage.removeItem('surveyAdaptiveBackup'); location.reload(); } }
 </script>
 </body>
 </html>
