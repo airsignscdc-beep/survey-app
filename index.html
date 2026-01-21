@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專業水準測量紀錄系統 (自動適應版)</title>
+    <title>專業水準測量紀錄系統 (穩定修復版)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root { --primary-dark: #1a2a3a; }
@@ -43,7 +43,7 @@
             .table-responsive { overflow: visible; }
         }
 
-        /* 底部統計列 (手機專用，電腦隱藏可選) */
+        /* 底部統計列 */
         .summary-bar {
             position: fixed; bottom: 0; left: 0; right: 0;
             background: #fff; border-top: 2px solid var(--primary-dark);
@@ -60,7 +60,7 @@
         <div class="row g-3">
             <div class="col-md-3 col-6">
                 <label class="form-label small">測量類型</label>
-                <select id="surveyType" class="form-select" onchange="toggleEndHeight(); saveAllData();">
+                <select id="surveyType" class="form-select" onchange="toggleEndHeight(); saveAllData(); calculate();">
                     <option value="閉合水準測量">閉合水準測量</option>
                     <option value="附合水準測量">附合水準測量</option>
                 </select>
@@ -99,7 +99,7 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    </tbody>
+                </tbody>
             </table>
         </div>
     </div>
@@ -112,6 +112,31 @@
 </div>
 
 <script>
+    // --- 新增：智慧命名核心函數 ---
+    function getNextSmartName(type) {
+        const rows = document.querySelectorAll('#tableBody tr');
+        // 如果沒有上一行，預設回傳類型名稱
+        if (rows.length === 0) return "BM1";
+
+        // 取得上一行的名稱
+        const lastRow = rows[rows.length - 1];
+        const lastName = lastRow.querySelector('.pt-name').value;
+
+        // 使用正則表達式分離 "文字" 和 "結尾數字"
+        // 例如 "A1" -> "A", "1"
+        // 例如 "TP_5" -> "TP_", "5"
+        const match = lastName.match(/^(.*?)(\d+)$/);
+
+        if (match) {
+            const prefix = match[1];
+            const number = parseInt(match[2]);
+            return prefix + (number + 1);
+        } else {
+            // 如果上一行沒有數字（例如 "BM"），則使用預設
+            return type === 'TP' ? 'TP' : 'IFS';
+        }
+    }
+
     function saveAllData() {
         const rows = [];
         document.querySelectorAll('#tableBody tr').forEach(row => {
@@ -153,7 +178,16 @@
         const row = document.createElement('tr');
         row.dataset.type = type;
         
-        const name = savedRow ? savedRow.name : (isFirst ? 'BM1' : (type==='TP'?'TP':'IFS'));
+        // --- 修改：套用智慧命名 ---
+        let name = "";
+        if (savedRow) {
+            name = savedRow.name;
+        } else if (isFirst) {
+            name = "BM1"; // 第一點預設
+        } else {
+            name = getNextSmartName(type); // 自動遞增
+        }
+        
         const bs = savedRow ? savedRow.bs : '';
         const ifs = savedRow ? savedRow.ifs : '';
         const fs = savedRow ? savedRow.fs : (isFirst ? '' : '');
@@ -178,7 +212,13 @@
 
     function addRow(type) { createRowElement(type, false); saveAllData(); }
     function deleteRow(btn) { if(confirm("刪除？")) { btn.closest('tr').remove(); calculate(); saveAllData(); } }
-    function toggleEndHeight() { document.getElementById('endHeightDiv').style.display = (document.getElementById('surveyType').value === '附合水準測量') ? 'block' : 'none'; }
+    
+    // 確保這裡邏輯正確
+    function toggleEndHeight() { 
+        const type = document.getElementById('surveyType').value;
+        const div = document.getElementById('endHeightDiv');
+        div.style.display = (type === '附合水準測量') ? 'block' : 'none'; 
+    }
 
     function calculate() {
         const startH = parseFloat(document.getElementById('startHeight').value) || 0;
